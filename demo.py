@@ -214,6 +214,7 @@ def drawBoxes(im, boxes):
         cv2.rectangle(im, (int(x1[i]), int(y1[i])), (int(x2[i]), int(y2[i])), (0,255,0), 1)
     return im
 
+
 from time import time
 _tstart_stack = []
 def tic():
@@ -505,6 +506,26 @@ def haveFace(img, facedetector):
     containFace = (True, False)[boundingboxes.shape[0]==0]
     return containFace, boundingboxes
 
+
+def get_main_box(boxes):
+    x1 = boxes[:,0]
+    y1 = boxes[:,1]
+    x2 = boxes[:,2]
+    y2 = boxes[:,3]
+    width = x2 - x1
+    height = y2 - y1
+    print height, width
+    w = np.array(width)
+    h = np.array(height)
+    area = w*h
+    if len(area) > 0:
+        max_index = np.argmax(area)
+        print max_index, area
+        return (x1[max_index], width[max_index], y1[max_index], height[max_index])
+    else:
+        print 'NO FACE FOUND'
+        return (-1,-1,-1,-1)
+
 def main():
     #imglistfile = "./file.txt"
     imglistfile = "imglist.txt"
@@ -514,7 +535,7 @@ def main():
     #imglistfile = "/home/duino/iactive/mtcnn/file.txt"
     minsize = 20
 
-    caffe_model_path = "./model"
+    caffe_model_path = "/home/navarro/repos/mtcnn/model"
 
     threshold = [0.6, 0.7, 0.7]
     factor = 0.709
@@ -526,6 +547,7 @@ def main():
 
 
     #error = []
+    output_str = ''
     f = open(imglistfile, 'r')
     for imgpath in f.readlines():
         imgpath = imgpath.split('\n')[0]
@@ -535,7 +557,7 @@ def main():
         tmp = img_matlab[:,:,2].copy()
         img_matlab[:,:,2] = img_matlab[:,:,0]
         img_matlab[:,:,0] = tmp
-
+        output_str += imgpath + ','
         # check rgb position
         #tic()
         boundingboxes, points = detect_face(img_matlab, minsize, PNet, RNet, ONet, threshold, False, factor)
@@ -553,17 +575,27 @@ def main():
 #        for i in range(len(boundingboxes)):
 #            cv2.rectangle(img, (int(boundingboxes[i][0]), int(boundingboxes[i][1])), (int(boundingboxes[i][2]), int(boundingboxes[i][3])), (0,255,0), 1)    
 
-        img = drawBoxes(img, boundingboxes)
-        cv2.imshow('img', img)
-        ch = cv2.waitKey(0) & 0xFF
-        if ch == 27:
-            break
+        # img = drawBoxes(img, boundingboxes)
+        coordinates_mainface = get_main_box(boundingboxes)
+
+        # cv2.imwrite(imgpath + '_processed.jpg', img)
+        output_str += str(coordinates_mainface[0]) + ','
+        output_str += str(coordinates_mainface[1]) + ','
+        output_str += str(coordinates_mainface[2]) + ','
+        output_str += str(coordinates_mainface[3]) + '\n'
+
+        # cv2.imshow('img', img)
+        # ch = cv2.waitKey(0) & 0xFF
+        # if ch == 27:
+        #     break
 
 
         #if boundingboxes.shape[0] > 0:
         #    error.append[imgpath]
     #print error
     f.close()
+    with open('image_bb.csv', 'w') as outfile:
+        outfile.write(output_str)
 
 if __name__ == "__main__":
     main()
